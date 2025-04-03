@@ -24,7 +24,7 @@ st.title("🏭 Manufacturing Agent")
 st.markdown("""
 ### Computer Vision with LandingAI + Graph Reasoning with RelationalAI
 """)
-st.write("This is under active development. Contact @randy.pettus for questions.")
+st.write("This is under active development.")
 
 # Get the current Snowflake session
 session = get_active_session()
