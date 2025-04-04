@@ -86,6 +86,25 @@ def insights_synthesis(input):
     logging.info("Running insights_synthesis tool")
     return Complete(model, f"#INSTRUCTIONS: Provide an impact analysis of the impacted sites, locations etc based on the input. {input}")
 
+def defect_action(input):
+    """take an action based on the downstream impact"""
+    logging.info("write defect results")
+
+    session.sql('use schema ')
+    # Create a sample DataFrame.
+    data = [
+        (1, selected_image, input),
+    ]
+    columns = ["ID", "IMAGE", "DEFECT_NOTES"]
+    df = session.create_dataframe(data, schema=columns)
+    
+    # Write the DataFrame to a Snowflake table in append mode.
+    # Note: The table "MY_APPEND_TABLE" must already exist.
+    df.write.mode("append").save_as_table("DEFECT_LOG")
+    
+    return 'results written'
+
+
 # -------------------------------
 # RAI configuration
 # -------------------------------
@@ -204,18 +223,15 @@ def get_rai_impact(input): #, site_name):
     return result.results.to_dict()
 
 #@st.cache_data
-#def get_impact(input): #, site_name):
-#    sql_cmd = f"""
-#    select  *
-#    from RAI_DEMO.RAI_LAI_MANUFACTURING.SKU sk
-#    where sk.name = 'Brake Disc' 
-#    """
-#    result = session.sql(sql_cmd).to_pandas()
-#    return result.to_dict()
+def get_impact(input): #, site_name):
+    sql_cmd = f"""
+    select  *
+    from RAI_DEMO.RAI_LAI_MANUFACTURING.SKU sk
+    where sk.name = 'Brake Disc' 
+    """
+    result = session.sql(sql_cmd).to_pandas()
+    return result.to_dict()
 
-def get_impact(input):
-    result = get_rai_impact("Brake Disc")
-    return result
 
 #result = get_impact("Brake Disc", "ZF")
 #st.write(get_impact("Brake Disc"))
@@ -261,6 +277,14 @@ insights_synthesis_config = {
     "python_func": insights_synthesis,
 }
 
+defect_action_config = {
+    "tool_description": "ONLY PERFORM FOR PARTS THAT ARE DEFECTIVE!!! If a downstream impact is identified take action including logging the analysis", # Get the sku name first from the key value config",
+    "output_description": "string of results written",
+    "python_func": defect_action,
+}
+
+
+
 
 ll_inference_tool = PythonTool(**ll_config)
 ll_summarize_tool = PythonTool(**ll_summarize_config)
@@ -268,6 +292,7 @@ get_sku_site_tool = PythonTool(**get_sku_site_config)
 key_value_extract_tool = PythonTool(**key_value_config)
 get_impact_tool = PythonTool(**get_impact_config)
 insights_synthesis_tool = PythonTool(**insights_synthesis_config)
+defect_action_tool = PythonTool(**defect_action_config)
 
 
 snowflake_tools = [
@@ -276,7 +301,8 @@ snowflake_tools = [
     get_sku_site_tool, 
     #kkey_value_extract_tool,
     get_impact_tool,
-    insights_synthesis_tool
+    insights_synthesis_tool,
+    defect_action_tool
     
 ]
 
@@ -467,4 +493,6 @@ with tab2:
             else:
                 st.markdown(final_response)
                 st.session_state.messages.append({"role": "assistant", "content": final_response})
+
+
 
